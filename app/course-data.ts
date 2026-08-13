@@ -67,4 +67,7 @@ export const courseTests: CourseTest[] = [
   {id:"review-2",title:"Review test 2",scope:"Units 1-30",pages:"82-83",cd:3,tracks:["39","40","41"]},
 ];
 
-export const audioSrc = (cd: number, track: string) => `/audio/CD${cd}/Track${track}.mp3`;
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+export const audioSrc = (cd: number, track: string) => `${basePath}/audio/CD${cd}/Track${track}.mp3`;
+export const captionsSrc = `${basePath}/audio/captions-note.vtt`;
