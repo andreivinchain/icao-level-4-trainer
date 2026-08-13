@@ -11,9 +11,9 @@ copy_sheet() {
   cp "$source_dir/$source" "$output_dir/unit-$unit.png"
 }
 
-copy_sheet 01 exec-04d66926-06f5-48f9-bc23-f7093dc2b0fc.png
+copy_sheet 01 exec-06afbb4c-9dd2-44cd-b0ad-9cf3b2048bf0.png
 copy_sheet 02 exec-23736cdd-375c-45c1-a719-e3ef9d48f47a.png
-copy_sheet 03 exec-06afbb4c-9dd2-44cd-b0ad-9cf3b2048bf0.png
+copy_sheet 03 exec-04d66926-06f5-48f9-bc23-f7093dc2b0fc.png
 copy_sheet 04 exec-db786d41-ec97-454b-a170-5d78b24a8e8e.png
 copy_sheet 05 exec-2f60e965-9601-485c-a6ea-f2f43b4aedc4.png
 copy_sheet 06 exec-de29da7b-b1e0-45c7-83e9-05d6fa5b8165.png
