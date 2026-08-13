@@ -7,6 +7,9 @@
 ## Что реализовано
 
 - 30 тематических units и 300 учебных заданий;
+- 30 иллюстраций units и 8 изображений контрольных тестов из учебного материала;
+- интерактивные picture questions, gist quiz, phrase builder, matching, role-play и speaking timer;
+- раскрываемые model answers, адаптированные по listening scripts книги;
 - 6 progress tests и 2 review tests;
 - 240 словарных карточек;
 - 30 сценариев Pilot-ATC;
