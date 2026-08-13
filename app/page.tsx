@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getBookTestImage } from "./book-content";
 import { audioSrc, captionsSrc, courseTests, lessons, type CourseLesson, type CourseTest } from "./course-data";
 import LessonExercises from "./lesson-exercises";
+import VoiceRecorder from "./voice-recorder";
 
 type View = "home" | "lessons" | "lesson" | "test" | "vocabulary" | "cards" | "scenarios" | "exam" | "progress" | "settings";
 type Progress = { lessons: string[]; tests: string[]; exercises: string[]; words: string[]; streak: number; minutes: number };
@@ -59,6 +60,7 @@ export default function Home() {
   const openLesson = (lesson: CourseLesson) => { setSelectedLesson(lesson); setView("lesson"); };
   const openTest = (test: CourseTest) => { setSelectedTest(test); setView("test"); };
   const title = useMemo(() => nav.find(n => n.id === view)?.label ?? (view === "test" ? selectedTest.title : selectedLesson.title), [view, selectedLesson, selectedTest]);
+  const selectedLessonIndex=lessons.findIndex(lesson=>lesson.id===selectedLesson.id);
 
   return <div className={dark ? "app dark" : "app"}>
     <aside className="sidebar">
@@ -72,7 +74,7 @@ export default function Home() {
 
       {view === "home" && <Dashboard progress={progress} completion={completion} openLesson={openLesson} setView={setView} />}
       {view === "lessons" && <section className="page"><div className="course-summary"><b>30</b><span>тематических units</span><b>300</b><span>учебных заданий</span><b>8</b><span>контрольных тестов</span><b>{vocab.length}</b><span>терминов</span></div><div className="section-heading"><div><span className="eyebrow">ПОЛНЫЙ КУРС · UNITS 1-30</span><h2>Все разделы книги</h2></div><span className="pill">{progress.lessons.length}/{lessons.length} завершено</span></div><div className="lesson-list">{lessons.map(l => <button className="lesson-row" key={l.id} onClick={() => openLesson(l)}><span className={progress.lessons.includes(l.id) ? "lesson-num done" : "lesson-num"}>{progress.lessons.includes(l.id) ? "✓" : l.n}</span><span className="lesson-main"><b>{l.title}</b><small>{l.ru} · стр. {l.pages} · CD{l.cd}: {l.tracks.map(t=>`${l.cd}.${t}`).join(", ")}</small></span><span className="lesson-meta"><small>{l.time} мин</small><em>10 ЗАДАНИЙ</em></span><span className="arrow">→</span></button>)}</div><div className="section-heading"><div><span className="eyebrow">КОНТРОЛЬ</span><h2>Progress & review tests</h2></div><span className="pill">{progress.tests.length}/{courseTests.length} завершено</span></div><div className="test-grid">{courseTests.map(t=><button key={t.id} onClick={()=>openTest(t)} className={progress.tests.includes(t.id)?"done":""}><span>{progress.tests.includes(t.id)?"✓":"TEST"}</span><b>{t.title}</b><small>{t.scope} · стр. {t.pages}</small><em>CD{t.cd}: {t.tracks.map(x=>`${t.cd}.${x}`).join(", ")}</em></button>)}</div><SourceNote /></section>}
-      {view === "lesson" && <Lesson lesson={selectedLesson} progress={progress} setProgress={setProgress} completed={progress.lessons.includes(selectedLesson.id)} onComplete={() => markLesson(selectedLesson.id)} back={() => setView("lessons")} audio={audio} />}
+      {view === "lesson" && <Lesson lesson={selectedLesson} progress={progress} setProgress={setProgress} completed={progress.lessons.includes(selectedLesson.id)} onComplete={() => markLesson(selectedLesson.id)} back={() => setView("lessons")} audio={audio} previous={selectedLessonIndex>0?()=>openLesson(lessons[selectedLessonIndex-1]):undefined} next={selectedLessonIndex<lessons.length-1?()=>openLesson(lessons[selectedLessonIndex+1]):undefined} />}
       {view === "test" && <CourseTestPage test={selectedTest} progress={progress} setProgress={setProgress} audio={audio} back={()=>setView("lessons")} />}
       {view === "vocabulary" && <Vocabulary progress={progress} setProgress={setProgress} startCards={() => {setCard(0); setFlipped(false); setView("cards")}} />}
       {view === "cards" && <Cards card={card} flipped={flipped} setFlipped={setFlipped} progress={progress} setProgress={setProgress} next={() => {setCard((card+1)%vocab.length);setFlipped(false)}} />}
@@ -96,13 +98,14 @@ function Dashboard({progress,completion,openLesson,setView}:{progress:Progress;c
   </section>;
 }
 
-function Lesson({lesson,completed,onComplete,back,audio,progress,setProgress}:{lesson:CourseLesson;completed:boolean;onComplete:()=>void;back:()=>void;audio:boolean;progress:Progress;setProgress:React.Dispatch<React.SetStateAction<Progress>>}) {
+function Lesson({lesson,completed,onComplete,back,audio,progress,setProgress,previous,next}:{lesson:CourseLesson;completed:boolean;onComplete:()=>void;back:()=>void;audio:boolean;progress:Progress;setProgress:React.Dispatch<React.SetStateAction<Progress>>;previous?:()=>void;next?:()=>void}) {
   const toggleTask=(id:string)=>setProgress(p=>({...p,exercises:p.exercises.includes(id)?p.exercises.filter(x=>x!==id):[...p.exercises,id]}));
   const done=Array.from({length:10},(_,i)=>progress.exercises.includes(`${lesson.id}-e${i+1}`)).filter(Boolean).length;
   return <section className="page narrow"><button className="back" onClick={back}>← К полному курсу</button><div className="lesson-hero"><span>{lesson.n}</span><div><em>Книга, стр. {lesson.pages} · CD{lesson.cd}: {lesson.tracks.map(t=>`${lesson.cd}.${t}`).join(", ")}</em><h2>{lesson.title}</h2><p>{lesson.objective}</p></div></div>
     <div className="unit-status"><span><b>{done}/10</b> заданий выполнено</span><div><i style={{width:`${done*10}%`}}/></div></div>
-    <LessonExercises lesson={lesson} audio={audio} completedIds={progress.exercises} onToggle={toggleTask}/>
-    <div className="complete-unit"><span>{done}/10 заданий отмечено</span><button className={completed?"secondary complete":"primary"} onClick={onComplete}>{completed?"✓ Unit завершён":"Завершить unit"}</button></div><SourceNote /></section>
+    <LessonExercises key={lesson.id} lesson={lesson} audio={audio} completedIds={progress.exercises} onToggle={toggleTask}/>
+    <div className="complete-unit"><span>{done}/10 заданий отмечено</span><button className={completed?"secondary complete":"primary"} onClick={onComplete}>{completed?"✓ Unit завершён":"Завершить unit"}</button></div>
+    <nav className="unit-navigation" aria-label="Навигация между разделами"><button disabled={!previous} onClick={previous}>← {previous?`Unit ${String(Number(lesson.n)-1).padStart(2,"0")}`:"Первый unit"}</button><button disabled={!next} onClick={next}>{next?`Unit ${String(Number(lesson.n)+1).padStart(2,"0")} →`:"Последний unit"}</button></nav><SourceNote /></section>
 }
 
 function CourseTestPage({test,progress,setProgress,audio,back}:{test:CourseTest;progress:Progress;setProgress:React.Dispatch<React.SetStateAction<Progress>>;audio:boolean;back:()=>void}) {
@@ -119,7 +122,24 @@ function Cards({card,flipped,setFlipped,progress,setProgress,next}:{card:number;
 
 function Scenarios(){const [active,setActive]=useState(0);const s=scenarios[active];return <section className="page"><div className="section-heading"><div><span className="eyebrow">PILOT — ATC</span><h2>Коммуникационные сценарии</h2></div></div><div className="tabs">{scenarios.map((x,i)=><button className={active===i?"active":""} onClick={()=>setActive(i)} key={x.title}>{x.title}</button>)}</div><div className="scenario-layout"><article className="content-card"><em className="tag">{s.tag}</em><h2>{s.title}</h2><p>{s.situation}</p><small>РОЛИ · {s.roles}</small><div className="dialogue">{s.lines.map((l,i)=><div key={i}><b>{l[0]}</b><p>{l[1]}</p></div>)}</div></article><aside className="content-card"><span className="eyebrow">ВАША ЗАДАЧА</span><p>{s.task}</p><hr/><span className="eyebrow">SELF-CHECK</span>{s.checks.map(x=><label key={x}><input type="checkbox"/> {x}</label>)}</aside></div><p className="method-note">ⓘ Сценарии — дополнительные методические задания, составленные по формату книги. Не являются официальной фразеологией для операционного использования.</p></section>}
 
-function Exam({step,setStep}:{step:number;setStep:(n:number)=>void}) { const prompts=[{k:"PART 1 · WARM-UP",t:"Aviation experience",q:"What makes communication difficult during a high-workload phase of flight? Give an example."},{k:"PART 2 · SITUATION",t:"Unexpected traffic",q:"You see converging traffic at the same altitude. Describe what you see, explain the risk and say what you would do."},{k:"PART 3 · INTERACTION",t:"Clarify the instruction",q:"ATC transmission is partly unreadable. Respond, identify what is missing and request confirmation."}]; const p=prompts[step]; return <section className="page narrow"><div className="exam-head"><div><span className="eyebrow">ПРОБНАЯ СЕССИЯ</span><h2>ICAO speaking practice</h2></div><span>{step+1} / {prompts.length}</span></div><div className="exam-progress"><span style={{width:`${(step+1)/prompts.length*100}%`}}/></div><article className="exam-card"><em>{p.k}</em><h2>{p.t}</h2><p>{p.q}</p><div className="timer">01:30 <small>рекомендуемое время</small></div><textarea placeholder="Краткие заметки для ответа…"/><div className="placeholder">🎙 <b>Запись и AI-оценка</b><small>Placeholder будущей версии. В MVP используйте таймер и self-check.</small></div></article><div className="self-check"><span className="eyebrow">ПРОВЕРЬТЕ ОТВЕТ</span>{criteria.slice(step===2?4:0,step===2?6:3).map(c=><label key={c[0]}><input type="checkbox"/> <b>{c[1]}</b> — {c[3]}</label>)}</div><div className="exam-nav"><button disabled={step===0} onClick={()=>setStep(step-1)}>← Назад</button><button className="primary" disabled={step===prompts.length-1} onClick={()=>setStep(step+1)}>Следующая часть →</button></div></section> }
+function Exam({step,setStep}:{step:number;setStep:(n:number)=>void}) {
+  const prompts=[{k:"PART 1 · WARM-UP",t:"Aviation experience",q:"What makes communication difficult during a high-workload phase of flight? Give an example."},{k:"PART 2 · SITUATION",t:"Unexpected traffic",q:"You see converging traffic at the same altitude. Describe what you see, explain the risk and say what you would do."},{k:"PART 3 · INTERACTION",t:"Clarify the instruction",q:"ATC transmission is partly unreadable. Respond, identify what is missing and request confirmation."}];
+  const [notes,setNotes]=useState(["","",""]);
+  const [notesReady,setNotesReady]=useState(false);
+  useEffect(()=>{
+    try {
+      const saved=localStorage.getItem("icao-exam-notes");
+      if(saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate device-local exam notes
+        setNotes(JSON.parse(saved));
+      }
+    } catch { localStorage.removeItem("icao-exam-notes") }
+    setNotesReady(true);
+  },[]);
+  useEffect(()=>{if(notesReady)localStorage.setItem("icao-exam-notes",JSON.stringify(notes))},[notes,notesReady]);
+  const p=prompts[step];
+  return <section className="page narrow"><div className="exam-head"><div><span className="eyebrow">ПРОБНАЯ СЕССИЯ</span><h2>ICAO speaking practice</h2></div><span>{step+1} / {prompts.length}</span></div><div className="exam-progress"><span style={{width:`${(step+1)/prompts.length*100}%`}}/></div><article className="exam-card"><em>{p.k}</em><h2>{p.t}</h2><p>{p.q}</p><div className="timer">01:30 <small>рекомендуемое время</small></div><textarea value={notes[step]??""} onChange={event=>setNotes(notes.map((value,index)=>index===step?event.target.value:value))} placeholder="Краткие заметки для ответа…"/><VoiceRecorder key={`exam-${step}`} storageKey={`exam-${step}`} showSelfAssessment/></article><div className="self-check"><span className="eyebrow">ПРОВЕРЬТЕ ОТВЕТ</span>{criteria.slice(step===2?4:0,step===2?6:3).map(c=><label key={c[0]}><input type="checkbox"/> <b>{c[1]}</b> — {c[3]}</label>)}</div><div className="exam-nav"><button disabled={step===0} onClick={()=>setStep(step-1)}>← Назад</button><button className="primary" disabled={step===prompts.length-1} onClick={()=>setStep(step+1)}>Следующая часть →</button></div></section>
+}
 
 function ProgressPage({progress,completion}:{progress:Progress;completion:number}) { return <section className="page"><div className="section-heading"><div><span className="eyebrow">ВАШ БОРТОВОЙ ЖУРНАЛ</span><h2>Прогресс подготовки</h2></div><span className="pill">{completion}% курса</span></div><div className="metrics"><div><span>▤</span><b>{progress.lessons.length}/30</b><small>units завершено</small></div><div><span>✓</span><b>{progress.exercises.length}/300</b><small>заданий выполнено</small></div><div><span>✦</span><b>{progress.tests.length}/8</b><small>тестов завершено</small></div><div><span>A</span><b>{progress.words.length}/{vocab.length}</b><small>слов изучено</small></div></div><div className="content-card"><span className="eyebrow">НАВЫКИ ICAO · САМООЦЕНКА MVP</span><div className="skill-bars">{criteria.map((c,i)=><div key={c[0]}><span>{c[1]}</span><div><i style={{width:`${35+((i*11+progress.lessons.length*8)%42)}%`}}/></div><b>{35+((i*11+progress.lessons.length*8)%42)}%</b></div>)}</div><p className="method-note">Значения показывают активность в приложении, а не официальную оценку ICAO.</p></div></section> }
 
